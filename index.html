@@ -1,0 +1,562 @@
+
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#080d1b">
+<title>Atmos — Ob-havo</title>
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+:root {
+  --bg:#080d1b;
+  --card:rgba(22,34,61,.76);
+  --border:rgba(151,181,255,.13);
+  --muted:#9aaaca;
+  --blue:#62a5ff;
+}
+*{box-sizing:border-box}
+body{
+  margin:0;min-height:100vh;color:#f4f7ff;
+  background:radial-gradient(ellipse at 12% 0%,#172b57,transparent 43%),
+  radial-gradient(ellipse at 95% 45%,#102a48,transparent 35%),var(--bg);
+  font-family:Inter,Arial,sans-serif;transition:background .5s;
+}
+body.night{background:radial-gradient(ellipse at 15% 0%,#101b42,transparent 45%),#050916}
+button,input{font:inherit}
+button{cursor:pointer}
+.app{width:min(1100px,92%);margin:auto;padding:28px 0 45px}
+header{display:flex;justify-content:space-between;align-items:center;gap:18px;margin-bottom:20px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:12px}
+.logo{
+  display:grid;place-items:center;width:48px;height:48px;
+  border-radius:16px;font-size:27px;
+  background:linear-gradient(135deg,#70bdff,#536aff);
+  box-shadow:0 8px 30px #347dff35
+}
+.brand h1{font-size:21px;margin:0}
+.brand p{color:var(--muted);font-size:12px;margin:5px 0 0}
+.search{display:flex;gap:8px;width:min(420px,100%)}
+.search input{
+  min-width:0;flex:1;padding:13px 15px;color:white;
+  background:#101a30;border:1px solid var(--border);
+  border-radius:13px;outline:none
+}
+.search button,.location-btn{
+  border:0;border-radius:13px;padding:12px 15px;
+  background:linear-gradient(135deg,#438fff,#6866f8);
+  color:white;font-weight:700
+}
+.location-btn{background:#172540;border:1px solid var(--border)}
+.status{color:#94a9ca;font-size:12px;margin:12px 2px;min-height:18px}
+.hero{
+  position:relative;overflow:hidden;padding:30px;
+  border:1px solid #8cb7ff25;border-radius:28px;
+  background:linear-gradient(120deg,rgba(40,75,137,.8),rgba(22,35,67,.85) 65%,rgba(34,55,99,.7));
+  box-shadow:0 25px 80px #0002
+}
+.hero-top{display:flex;justify-content:space-between;gap:20px}
+.eyebrow{color:#b8c9ec;font-size:12px;letter-spacing:1.5px;text-transform:uppercase}
+.city{font-size:clamp(24px,4vw,36px);font-weight:800;margin:10px 0 5px}
+.date{color:#b5c6e7;font-size:13px}
+.current{display:flex;justify-content:space-between;align-items:center;gap:20px;margin-top:22px}
+.temp{font-size:clamp(72px,12vw,112px);font-weight:700;line-height:1.1;letter-spacing:-7px}
+.condition{color:#dce7ff;font-size:16px;margin-top:8px}
+.weather-icon{font-size:clamp(78px,13vw,120px)}
+.feels{margin-top:15px;font-size:13px;color:#b7c9e8}
+.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:13px;margin:18px 0 30px}
+.card{
+  min-width:0;padding:19px;border-radius:20px;
+  background:var(--card);border:1px solid var(--border);
+  backdrop-filter:blur(14px)
+}
+.metric-head{display:flex;align-items:center;gap:9px;color:var(--muted);font-size:12px}
+.metric-icon{font-size:19px}
+.metric-value{font-size:23px;font-weight:700;margin-top:16px}
+.metric-note{color:var(--muted);font-size:11px;margin-top:6px}
+.section{margin-bottom:30px}
+.section-title{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:15px}
+.section-title h2{margin:0;font-size:19px}
+.section-title span{font-size:12px;color:var(--muted)}
+.hours{display:flex;gap:12px;overflow-x:auto;padding-bottom:10px}
+.hour{min-width:105px;text-align:center}
+.hour .time{color:var(--muted);font-size:12px}
+.hour .icon{font-size:27px;margin:15px 0}
+.hour .degrees{font-weight:700;font-size:17px}
+.hour .rain{font-size:11px;color:#83bcff;margin-top:8px}
+.days{display:grid;gap:9px}
+.day{display:grid;grid-template-columns:1fr 48px 90px 90px;align-items:center;gap:12px;padding:12px 15px}
+.day-name{font-size:13px}
+.day-icon{font-size:24px;text-align:center}
+.day-temp{text-align:right;font-size:13px;font-weight:600}
+.day-rain{color:#8fc7ff;font-size:11px;text-align:right}
+.extremes{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px}
+.extreme{background:#0c1730aa;border:1px solid var(--border);border-radius:15px;padding:15px}
+.extreme strong{display:block;font-size:24px;margin:8px 0}
+.extreme span,.hint{color:var(--muted);font-size:12px}
+.chart{width:100%;overflow:hidden}
+.chart svg{width:100%;height:auto;display:block}
+.map-buttons{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
+.map-buttons button{padding:10px 13px;border-radius:11px;color:#eaf2ff;border:1px solid var(--border);background:#172540}
+.map-buttons button.active{background:#367ce7}
+#map{height:380px;width:100%;border-radius:15px;overflow:hidden}
+.leaflet-popup-content-wrapper,.leaflet-popup-tip{background:#152440;color:#f4f7ff}
+.hint{line-height:1.7;margin-top:12px}
+footer{color:#657594;font-size:11px;text-align:center;margin-top:27px;line-height:1.8}
+
+/* Ob-havo animatsiyalari */
+#effects{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:5}
+.sun-rays{
+  position:absolute;width:180px;height:180px;right:7%;top:120px;
+  border-radius:50%;
+  background:repeating-conic-gradient(#ffd66b55 0deg 7deg,transparent 7deg 22deg);
+  animation:rotateSun 30s linear infinite;
+  mask-image:radial-gradient(circle,transparent 0 35%,black 38% 65%,transparent 72%)
+}
+@keyframes rotateSun{to{transform:rotate(360deg)}}
+.drop{
+  position:absolute;top:-30px;width:2px;height:24px;
+  background:linear-gradient(transparent,#8bcaff);
+  animation:fall linear infinite
+}
+@keyframes fall{to{transform:translate(-50px,110vh)}}
+.snow{
+  position:absolute;top:-25px;color:#e7f5ff;
+  text-shadow:0 0 12px #8ecfff;
+  animation:snowFall linear infinite
+}
+@keyframes snowFall{
+  50%{transform:translate(30px,50vh) rotate(180deg)}
+  to{transform:translate(-20px,110vh) rotate(360deg)}
+}
+.cloud{
+  position:absolute;font-size:55px;opacity:.15;
+  animation:cloudMove 35s linear infinite alternate
+}
+@keyframes cloudMove{to{transform:translateX(70px)}}
+button:disabled{opacity:.55;cursor:wait}
+
+@media(max-width:680px){
+  .app{width:94%;padding-top:18px}
+  .search{width:100%;order:3}
+  .location-btn{margin-left:auto}
+  .hero{padding:22px;border-radius:23px}
+  .metrics{grid-template-columns:repeat(2,1fr);gap:10px}
+  .card{padding:15px}
+  .metric-value{font-size:21px}
+  .day{grid-template-columns:1fr 35px 80px;gap:8px}
+  .day-rain{display:none}
+  #map{height:320px}
+}
+</style>
+</head>
+
+<body>
+<div id="effects"></div>
+
+<div class="app">
+<header>
+  <div class="brand">
+    <div class="logo">🌤️</div>
+    <div>
+      <h1>atmos<span style="color:#70aaff">.</span></h1>
+      <p>Ob-havo sizning qo‘lingizda</p>
+    </div>
+  </div>
+
+  <button class="location-btn" id="locBtn">◎ Joylashuvim</button>
+
+  <form class="search" id="searchForm">
+    <input id="cityInput" placeholder="Shahar nomini kiriting..." value="Toshkent">
+    <button type="submit" id="searchBtn">Qidirish</button>
+  </form>
+</header>
+
+<div class="status" id="status">Ob-havo yuklanmoqda...</div>
+
+<main>
+<section class="hero">
+  <div class="hero-top">
+    <div>
+      <div class="eyebrow">Hozirgi ob-havo</div>
+      <div class="city" id="city">Toshkent, O‘zbekiston</div>
+      <div class="date" id="date">Bugungi ob-havo</div>
+    </div>
+    <div style="text-align:right">
+      <div class="eyebrow">Ma'lumot manbasi</div>
+      <div style="margin-top:9px;font-size:13px">Open-Meteo API</div>
+    </div>
+  </div>
+
+  <div class="current">
+    <div>
+      <div class="temp"><span id="temperature">--</span><span style="font-size:.47em;vertical-align:top">°C</span></div>
+      <div class="condition" id="condition">Yuklanmoqda...</div>
+      <div class="feels">His qilinishi: <b id="feels">--°C</b></div>
+    </div>
+    <div class="weather-icon" id="weatherIcon">🌤️</div>
+  </div>
+</section>
+
+<section class="metrics">
+  <div class="card"><div class="metric-head">💧 Namlik</div><div class="metric-value" id="humidity">--%</div><div class="metric-note">Havodagi namlik</div></div>
+  <div class="card"><div class="metric-head">💨 Shamol</div><div class="metric-value" id="wind">-- km/soat</div><div class="metric-note">Shamol tezligi</div></div>
+  <div class="card"><div class="metric-head">🌡️ Bosim</div><div class="metric-value" id="pressure">-- hPa</div><div class="metric-note">Atmosfera bosimi</div></div>
+  <div class="card"><div class="metric-head">☀️ UV indeksi</div><div class="metric-value" id="uv">--</div><div class="metric-note">Quyosh nurlanishi</div></div>
+</section>
+
+<section class="section">
+  <div class="section-title"><h2>⏱️ Soatlik prognoz</h2><span>Keyingi 24 soat</span></div>
+  <div class="hours" id="hours"></div>
+</section>
+
+<section class="section">
+  <div class="section-title"><h2>🌡️ Harorat grafigi</h2><span>24 soatlik o‘zgarish</span></div>
+  <div class="card">
+    <div class="chart" id="chart"><div class="hint">Grafik yuklanmoqda...</div></div>
+    <div class="extremes">
+      <div class="extreme">🔥 Eng issiq vaqt<strong id="maxTemp">--°C</strong><span id="maxTime">--</span></div>
+      <div class="extreme">❄️ Eng sovuq vaqt<strong id="minTemp">--°C</strong><span id="minTime">--</span></div>
+    </div>
+    <div class="hint" id="rainSummary">Yomg‘ir ehtimoli hisoblanmoqda...</div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-title"><h2>🗺️ Ob-havo xaritasi</h2><span>Joyni tanlash uchun xaritani bosing</span></div>
+  <div class="card">
+    <div class="map-buttons">
+      <button class="active" data-layer="rain">🌧️ Yomg‘ir radari</button>
+      <button data-layer="clouds">☁️ Bulutlar</button>
+      <button data-layer="wind">💨 Shamol</button>
+    </div>
+    <div id="map"></div>
+    <div class="hint" id="mapStatus">Xaritadan nuqta tanlang.</div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-title"><h2>📅 7 kunlik prognoz</h2><span>Harorat va yog‘ingarchilik</span></div>
+  <div class="days" id="days"></div>
+</section>
+</main>
+
+<footer>
+  <div>Atmos Weather · Real vaqt ob-havo xizmati</div>
+  <div id="updated">Ma'lumotlar Open-Meteo orqali olinadi.</div>
+  <div>Prognozlar o‘zgarishi mumkin.</div>
+</footer>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+
+const weatherCodes = {
+  0:["Ochiq osmon","☀️"],1:["Asosan ochiq","🌤️"],
+  2:["Qisman bulutli","⛅"],3:["Bulutli","☁️"],
+  45:["Tuman","🌫️"],48:["Qirovli tuman","🌫️"],
+  51:["Yengil mayda yomg‘ir","🌦️"],53:["Mayda yomg‘ir","🌦️"],
+  55:["Kuchli mayda yomg‘ir","🌧️"],56:["Muzlagan yomg‘ir","🌧️"],
+  57:["Kuchli muzlagan yomg‘ir","🌧️"],61:["Yengil yomg‘ir","🌦️"],
+  63:["Yomg‘ir","🌧️"],65:["Kuchli yomg‘ir","🌧️"],
+  66:["Muzlagan yomg‘ir","🌧️"],67:["Kuchli muzlagan yomg‘ir","🌧️"],
+  71:["Yengil qor","🌨️"],73:["Qor","🌨️"],75:["Kuchli qor","❄️"],
+  77:["Qor donachalari","❄️"],80:["Qisqa yomg‘ir","🌦️"],
+  81:["Yomg‘ir jala","🌧️"],82:["Kuchli jala","⛈️"],
+  85:["Qor yog‘ishi","🌨️"],86:["Kuchli qor","❄️"],
+  95:["Momaqaldiroq","⛈️"],96:["Do‘l bilan momaqaldiroq","⛈️"],
+  99:["Kuchli do‘lli momaqaldiroq","⛈️"]
+};
+
+function info(code){return weatherCodes[code]||["Noma'lum ob-havo","🌡️"]}
+function hour(time){return time.slice(11,16)}
+function dayName(date,today){
+  if(date===today)return "Bugun";
+  return new Intl.DateTimeFormat("uz-UZ",{weekday:"long"})
+    .format(new Date(date+"T12:00:00"));
+}
+function status(message,error=false){
+  $("status").textContent=message;
+  $("status").style.color=error?"#ff9caa":"#94a9ca";
+}
+async function getJSON(url){
+  const response=await fetch(url);
+  if(!response.ok)throw Error("API xatosi: "+response.status);
+  return response.json();
+}
+
+async function searchCity(name){
+  const url="https://geocoding-api.open-meteo.com/v1/search?name="+
+    encodeURIComponent(name)+"&count=10&language=uz&format=json";
+  const result=await getJSON(url);
+  if(!result.results?.length)throw Error("Shahar topilmadi. Boshqa nom kiriting.");
+  const place=result.results.find(p=>p.country_code==="UZ")||result.results[0];
+  await loadWeather(place.latitude,place.longitude,place.name,place.country);
+  if(weatherMap)weatherMap.setView([place.latitude,place.longitude],8);
+}
+
+async function loadWeather(lat,lon,city,country=""){
+  status("Ob-havo ma'lumotlari olinmoqda...");
+  $("searchBtn").disabled=true;
+  try{
+    const params=new URLSearchParams({
+      latitude:lat,longitude:lon,
+      current:"temperature_2m,relative_humidity_2m,apparent_temperature,is_day,precipitation,weather_code,surface_pressure,wind_speed_10m,cloud_cover",
+      hourly:"temperature_2m,precipitation_probability,weather_code",
+      daily:"weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,uv_index_max",
+      timezone:"auto",forecast_days:"7"
+    });
+    const data=await getJSON("https://api.open-meteo.com/v1/forecast?"+params);
+    window.currentLocation={lat,lon,city,country};
+    const c=data.current,d=data.daily;
+    const [description,icon]=info(c.weather_code);
+
+    $("city").textContent=[city,country].filter(Boolean).join(", ");
+    $("date").textContent=new Intl.DateTimeFormat("uz-UZ",{
+      weekday:"long",day:"numeric",month:"long",year:"numeric"
+    }).format(new Date());
+    $("temperature").textContent=Math.round(c.temperature_2m);
+    $("feels").textContent=Math.round(c.apparent_temperature)+"°C";
+    $("condition").textContent=description;
+    $("weatherIcon").textContent=icon;
+    $("humidity").textContent=c.relative_humidity_2m+"%";
+    $("wind").textContent=Math.round(c.wind_speed_10m)+" km/soat";
+    $("pressure").textContent=Math.round(c.surface_pressure)+" hPa";
+    $("uv").textContent=d.uv_index_max[0]??"--";
+
+    let start=data.hourly.time.findIndex(t=>t>=c.time);
+    if(start<0)start=0;
+    const times=data.hourly.time.slice(start,start+24);
+    const temps=data.hourly.temperature_2m.slice(start,start+24);
+    const rains=data.hourly.precipitation_probability.slice(start,start+24);
+    const codes=data.hourly.weather_code.slice(start,start+24);
+
+    $("hours").innerHTML=times.map((t,i)=>{
+      const [desc,ico]=info(codes[i]);
+      return `<div class="card hour" title="${desc}">
+        <div class="time">${i===0?"Hozir":hour(t)}</div>
+        <div class="icon">${ico}</div>
+        <div class="degrees">${Math.round(temps[i])}°</div>
+        <div class="rain">💧 ${rains[i]??0}%</div>
+      </div>`;
+    }).join("");
+
+    const max=Math.max(...temps),min=Math.min(...temps);
+    const maxI=temps.indexOf(max),minI=temps.indexOf(min);
+    $("maxTemp").textContent=Math.round(max)+"°C";
+    $("maxTime").textContent=hour(times[maxI])+" da";
+    $("minTemp").textContent=Math.round(min)+"°C";
+    $("minTime").textContent=hour(times[minI])+" da";
+
+    const knownRain=rains.filter(v=>v!==null);
+    const maxRain=knownRain.length?Math.max(...knownRain):null;
+    const rainI=rains.findIndex(v=>v===maxRain);
+    $("rainSummary").textContent=maxRain===null
+      ?"Yomg‘ir ehtimoli ma'lumoti mavjud emas."
+      :"💧 Eng yuqori yomg‘ir ehtimoli: "+maxRain+"%"+
+        (rainI>=0?" · "+hour(times[rainI]):"");
+
+    drawChart(times,temps);
+
+    $("days").innerHTML=d.time.map((date,i)=>{
+      const [desc,ico]=info(d.weather_code[i]);
+      return `<div class="card day" title="${desc}">
+        <div class="day-name">${dayName(date,d.time[0])}</div>
+        <div class="day-icon">${ico}</div>
+        <div class="day-temp">${Math.round(d.temperature_2m_max[i])}° / ${Math.round(d.temperature_2m_min[i])}°</div>
+        <div class="day-rain">💧 ${d.precipitation_probability_max[i]??0}%</div>
+      </div>`;
+    }).join("");
+
+    animateWeather(c.weather_code,c.is_day===1);
+    $("updated").textContent="Yangilandi: "+
+      new Intl.DateTimeFormat("uz-UZ",{hour:"2-digit",minute:"2-digit",second:"2-digit"}).format(new Date())+
+      " · API vaqti: "+c.time;
+    status("● Ma'lumotlar muvaffaqiyatli yangilandi");
+  }catch(e){
+    status(e.message||"Internetga ulanishda xatolik.",true);
+  }finally{
+    $("searchBtn").disabled=false;
+  }
+}
+
+function drawChart(times,temps){
+  if(!temps.length)return;
+  const W=700,H=210,p={l:38,r:15,t:20,b:32};
+  const min=Math.min(...temps)-2,max=Math.max(...temps)+2;
+  const plotW=W-p.l-p.r,plotH=H-p.t-p.b;
+  const x=i=>p.l+i*plotW/Math.max(1,temps.length-1);
+  const y=t=>p.t+(max-t)*plotH/(max-min||1);
+  const points=temps.map((t,i)=>`${x(i)},${y(t)}`).join(" ");
+  const grid=[0,1,2,3].map(i=>{
+    const yy=p.t+i*plotH/3,val=max-i*(max-min)/3;
+    return `<line x1="${p.l}" y1="${yy}" x2="${W-p.r}" y2="${yy}" stroke="#8298c522" stroke-dasharray="4 5"/>
+      <text x="2" y="${yy+4}" fill="#9aaaca" font-size="11">${Math.round(val)}°</text>`;
+  }).join("");
+  const dots=temps.map((t,i)=>
+    `<circle cx="${x(i)}" cy="${y(t)}" r="3" fill="#8bc5ff"><title>${hour(times[i])}: ${Math.round(t)}°C</title></circle>`
+  ).join("");
+  const labelIndexes=[0,Math.floor((times.length-1)/3),Math.floor(2*(times.length-1)/3),times.length-1]
+    .filter((v,i,a)=>a.indexOf(v)===i);
+  const labels=labelIndexes.map(i=>
+    `<text x="${x(i)}" y="${H-8}" fill="#9aaaca" text-anchor="middle" font-size="11">${hour(times[i])}</text>`
+  ).join("");
+  $("chart").innerHTML=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="24 soatlik harorat grafigi">
+    <defs><linearGradient id="fill" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0%" stop-color="#69aaff" stop-opacity=".35"/>
+    <stop offset="100%" stop-color="#69aaff" stop-opacity="0"/></linearGradient></defs>
+    ${grid}<polygon points="${x(0)},${H-p.b} ${points} ${x(temps.length-1)},${H-p.b}" fill="url(#fill)"/>
+    <polyline points="${points}" fill="none" stroke="#77b6ff" stroke-width="3" stroke-linejoin="round"/>
+    ${dots}${labels}</svg>`;
+}
+
+function animateWeather(code,isDay){
+  const fx=$("effects");
+  fx.innerHTML="";
+  document.body.classList.toggle("night",!isDay);
+
+  if(code===0||code===1){
+    const sun=document.createElement("div");
+    sun.className="sun-rays";
+    fx.appendChild(sun);
+  }else if([51,53,55,56,57,61,63,65,66,67,80,81,82,95,96,99].includes(code)){
+    for(let i=0;i<65;i++){
+      const drop=document.createElement("i");
+      drop.className="drop";
+      drop.style.left=Math.random()*100+"%";
+      drop.style.animationDuration=(.5+Math.random()*.8)+"s";
+      drop.style.animationDelay=(-Math.random()*3)+"s";
+      fx.appendChild(drop);
+    }
+  }else if([71,73,75,77,85,86].includes(code)){
+    for(let i=0;i<35;i++){
+      const snow=document.createElement("span");
+      snow.className="snow";snow.textContent="❄";
+      snow.style.left=Math.random()*100+"%";
+      snow.style.fontSize=(10+Math.random()*13)+"px";
+      snow.style.animationDuration=(5+Math.random()*7)+"s";
+      snow.style.animationDelay=(-Math.random()*10)+"s";
+      fx.appendChild(snow);
+    }
+  }else{
+    for(let i=0;i<4;i++){
+      const cloud=document.createElement("span");
+      cloud.className="cloud";cloud.textContent="☁️";
+      cloud.style.left=i*24+"%";cloud.style.top=(100+i*35)+"px";
+      fx.appendChild(cloud);
+    }
+  }
+}
+
+/* Interaktiv xarita */
+let weatherMap=null,marker=null,radarLayer=null,cloudLayer=null;
+let currentLayer="rain";
+
+function initMap(){
+  if(!window.L)return;
+  weatherMap=L.map("map").setView([41.2995,69.2401],6);
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{
+    maxZoom:18,attribution:"&copy; OpenStreetMap"
+  }).addTo(weatherMap);
+
+  weatherMap.on("click",async e=>{
+    const lat=e.latlng.lat,lon=e.latlng.lng;
+    if(marker)weatherMap.removeLayer(marker);
+    marker=L.marker([lat,lon]).addTo(weatherMap).bindPopup("Ob-havo yuklanmoqda...").openPopup();
+    try{
+      const params=new URLSearchParams({
+        latitude:lat,longitude:lon,
+        current:"temperature_2m,relative_humidity_2m,wind_speed_10m,weather_code,cloud_cover",
+        timezone:"auto"
+      });
+      const d=await getJSON("https://api.open-meteo.com/v1/forecast?"+params);
+      const c=d.current,[desc,ico]=info(c.weather_code);
+      marker.setPopupContent(`<b>${ico} Tanlangan joy</b><br>${desc}<br>
+        Harorat: ${Math.round(c.temperature_2m)}°C<br>
+        Namlik: ${c.relative_humidity_2m}%<br>
+        Shamol: ${c.wind_speed_10m} km/soat<br>
+        Bulutlilik: ${c.cloud_cover}%`);
+      $("mapStatus").textContent="Tanlangan joy: "+lat.toFixed(3)+", "+lon.toFixed(3);
+      await loadWeather(lat,lon,"Xaritadagi joy");
+    }catch(e){
+      marker.setPopupContent("Ma'lumotni olishda xatolik yuz berdi.");
+    }
+  });
+
+  document.querySelectorAll("[data-layer]").forEach(btn=>{
+    btn.addEventListener("click",()=>changeLayer(btn.dataset.layer,btn));
+  });
+  changeLayer("rain",document.querySelector('[data-layer="rain"]'));
+  setTimeout(()=>weatherMap.invalidateSize(),300);
+}
+
+async function changeLayer(layer,button){
+  currentLayer=layer;
+  document.querySelectorAll("[data-layer]").forEach(b=>b.classList.toggle("active",b===button));
+  if(!weatherMap)return;
+  if(radarLayer){weatherMap.removeLayer(radarLayer);radarLayer=null}
+  if(cloudLayer){weatherMap.removeLayer(cloudLayer);cloudLayer=null}
+
+  if(layer==="rain"){
+    try{
+      const r=await getJSON("https://api.rainviewer.com/public/weather-maps.json");
+      const frames=r.radar?.past;
+      if(!frames?.length)throw Error("Radar mavjud emas");
+      const frame=frames[frames.length-1];
+      radarLayer=L.tileLayer(r.host+frame.path+"/256/{z}/{x}/{y}/2/1_1.png",{
+        opacity:.65,attribution:"Radar: RainViewer"
+      }).addTo(weatherMap);
+      $("mapStatus").textContent="Yomg‘ir radari: oxirgi mavjud radar tasviri.";
+    }catch(e){
+      $("mapStatus").textContent="Yomg‘ir radari hozircha yuklanmadi. Xarita baribir ishlaydi.";
+    }
+  }else if(layer==="clouds"){
+    /* OpenWeather kabi pulli/API kalit talab qiladigan qatlam o‘rniga
+       tanlangan nuqta uchun haqiqiy bulutlilik ko‘rsatiladi. */
+    $("mapStatus").textContent="Xaritada joy tanlang: bulutlilik foizi shu joy ma'lumotlarida ko‘rsatiladi.";
+  }else{
+    $("mapStatus").textContent="Xaritada joy tanlang: shamol tezligi shu joy ma'lumotlarida ko‘rsatiladi.";
+  }
+}
+
+$("searchForm").addEventListener("submit",async e=>{
+  e.preventDefault();
+  const name=$("cityInput").value.trim();
+  if(!name){status("Shahar nomini kiriting.",true);return}
+  try{await searchCity(name)}catch(err){status(err.message,true)}
+});
+
+$("locBtn").addEventListener("click",()=>{
+  if(!navigator.geolocation){
+    status("Brauzer joylashuv xizmatini qo‘llab-quvvatlamaydi.",true);return;
+  }
+  status("Joylashuvingiz aniqlanmoqda...");
+  navigator.geolocation.getCurrentPosition(async p=>{
+    const lat=p.coords.latitude,lon=p.coords.longitude;
+    await loadWeather(lat,lon,"Mening joylashuvim");
+    if(weatherMap)weatherMap.setView([lat,lon],9);
+  },err=>{
+    status(err.code===1?"Joylashuvga ruxsat berilmadi.":"Joylashuv aniqlanmadi.",true);
+  },{enableHighAccuracy:false,timeout:12000,maximumAge:300000});
+});
+
+/* Boshlang‘ich yuklash va avtomatik yangilash */
+initMap();
+loadWeather(41.2995,69.2401,"Toshkent","O‘zbekiston");
+
+setInterval(()=>{
+  const p=window.currentLocation;
+  if(p)loadWeather(p.lat,p.lon,p.city,p.country);
+},600000);
+
+setInterval(()=>{
+  if(currentLayer==="rain")changeLayer("rain",document.querySelector('[data-layer="rain"]'));
+},600000);
+</script>
+</body>
+</html>
